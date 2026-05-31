@@ -1,0 +1,60 @@
+import Form from '../shared/Form';
+
+const empty = { name: '', email: '', birthDate: '', gender: '', cpf: '' };
+
+const input =
+  'border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+
+function PersonForm({ form, setForm, onSubmit }) {
+  function update(field, value) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  return (
+    <Form onSubmit={onSubmit} submitLabel="Adicionar">
+      <input
+        placeholder="Nome"
+        value={form.name}
+        onChange={(e) => update('name', e.target.value)}
+        required
+        className={input}
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={form.email}
+        onChange={(e) => update('email', e.target.value)}
+        required
+        className={input}
+      />
+      <input
+        type="date"
+        value={form.birthDate}
+        onChange={(e) => update('birthDate', e.target.value)}
+        required
+        className={input}
+      />
+      <select
+        value={form.gender}
+        onChange={(e) => update('gender', e.target.value)}
+        required
+        className={input}
+      >
+        <option value="">Gênero</option>
+        <option value="MALE">Masculino</option>
+        <option value="FEMALE">Feminino</option>
+        <option value="OTHER">Outro</option>
+      </select>
+      <input
+        placeholder="CPF"
+        value={form.cpf}
+        onChange={(e) => update('cpf', e.target.value)}
+        required
+        className={input}
+      />
+    </Form>
+  );
+}
+
+export { empty };
+export default PersonForm;

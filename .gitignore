@@ -4,5 +4,4 @@ build/
 *.log
 docs/*
 .env
-.env.*
 .DS_Store

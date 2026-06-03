@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import personRoutes from './api/personRoutes';
+import personRoutes from './handler/personHandler';
 
 const app = express();
 

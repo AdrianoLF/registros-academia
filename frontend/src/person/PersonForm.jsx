@@ -5,13 +5,13 @@ const empty = { name: '', email: '', birthDate: '', gender: '', cpf: '' };
 const input =
   'border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
-function PersonForm({ form, setForm, onSubmit }) {
+function PersonForm({ form, setForm, onSubmit, onCancel, editing }) {
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
   return (
-    <Form onSubmit={onSubmit} submitLabel="Adicionar">
+    <Form onSubmit={onSubmit} submitLabel={editing ? 'Salvar' : 'Adicionar'} onCancel={editing ? onCancel : undefined}>
       <input
         placeholder="Nome"
         value={form.name}

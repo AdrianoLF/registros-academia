@@ -1,4 +1,4 @@
-function Form({ onSubmit, submitLabel = 'Salvar', children }) {
+function Form({ onSubmit, submitLabel = 'Salvar', onCancel, children }) {
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-2 gap-3 bg-white p-5 rounded-xl shadow-sm mb-6">
       {children}
@@ -8,6 +8,15 @@ function Form({ onSubmit, submitLabel = 'Salvar', children }) {
       >
         {submitLabel}
       </button>
+      {onCancel && (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-4 py-2 rounded-lg"
+        >
+          Cancelar
+        </button>
+      )}
     </form>
   );
 }

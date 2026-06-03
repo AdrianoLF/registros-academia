@@ -1,32 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { Roles, Genders, codeOf, nameOf } from '../src/domain/Person';
+import { Role, Gender as GenderEnum } from '@prisma/client';
+import { Gender, GenderName } from '../src/domain/Gender';
 import { Student } from '../src/domain/Student';
 import { Teacher } from '../src/domain/Teacher';
+import { toDomain } from '../src/infra/PersonRepository';
 
 const props = {
   id: 1,
   name: 'John',
   email: 'john@gym.com',
   birthDate: new Date('1990-05-20'),
-  gender: 'MALE',
+  gender: new Gender('MALE'),
   cpf: '529.982.247-25',
 };
 
-describe('enums', () => {
-  it('maps names to codes', () => {
-    expect(codeOf(Roles, 'STUDENT')).toBe(0);
-    expect(codeOf(Roles, 'TEACHER')).toBe(1);
-    expect(codeOf(Genders, 'FEMALE')).toBe(1);
+function yearsAgo(years: number): Date {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - years);
+  return date;
+}
+
+describe('Gender', () => {
+  it('exposes a human label', () => {
+    expect(new Gender('FEMALE').label).toBe('Feminino');
   });
 
-  it('maps codes to names', () => {
-    expect(nameOf(Roles, 1)).toBe('TEACHER');
-    expect(nameOf(Genders, 2)).toBe('OTHER');
+  it('serializes to its name', () => {
+    expect(new Gender('OTHER').toJSON()).toBe('OTHER');
   });
 
-  it('throws on unknown value', () => {
-    expect(() => codeOf(Roles, 'ADMIN')).toThrow('Invalid enum value');
-    expect(() => nameOf(Genders, 9)).toThrow('Invalid enum value');
+  it('rejects an unknown gender', () => {
+    const invalid = 'ALIEN' as unknown as GenderName;
+    expect(() => new Gender(invalid)).toThrow('Invalid gender');
   });
 });
 
@@ -39,7 +44,50 @@ describe('Person polymorphism', () => {
     expect(new Teacher(props).role).toBe('TEACHER');
   });
 
-  it('validates on construction', () => {
-    expect(() => new Student({ ...props, cpf: '111.111.111-11' })).toThrow('Invalid CPF');
+  it('Student requires at least 14 years', () => {
+    const tooYoung = yearsAgo(13);
+    expect(() => new Student({ ...props, birthDate: tooYoung })).toThrow('Minimum age is 14');
+    expect(() => new Student({ ...props, birthDate: yearsAgo(14) })).not.toThrow();
+  });
+
+  it('Teacher requires at least 23 years', () => {
+    const tooYoung = yearsAgo(20);
+    expect(() => new Teacher({ ...props, birthDate: tooYoung })).toThrow('Minimum age is 23');
+    expect(() => new Teacher({ ...props, birthDate: yearsAgo(23) })).not.toThrow();
+  });
+
+  it('serializes gender and role as plain values', () => {
+    const json = new Student(props).toJSON();
+    expect(json.gender).toBe('MALE');
+    expect(json.role).toBe('STUDENT');
+  });
+});
+
+describe('toDomain mapping', () => {
+  const row = {
+    id: 5,
+    name: 'Mary',
+    email: 'mary@gym.com',
+    birthDate: new Date('1995-01-10'),
+    gender: GenderEnum.FEMALE,
+    cpf: '529.982.247-25',
+    role: Role.TEACHER,
+  };
+
+  it('maps a TEACHER row to a Teacher instance', () => {
+    const person = toDomain(row);
+    expect(person).toBeInstanceOf(Teacher);
+    expect(person.role).toBe('TEACHER');
+  });
+
+  it('maps a STUDENT row to a Student instance', () => {
+    const person = toDomain({ ...row, role: Role.STUDENT });
+    expect(person).toBeInstanceOf(Student);
+  });
+
+  it('rebuilds the Gender object from the enum name', () => {
+    const person = toDomain(row);
+    expect(person.gender).toBeInstanceOf(Gender);
+    expect(person.gender.label).toBe('Feminino');
   });
 });

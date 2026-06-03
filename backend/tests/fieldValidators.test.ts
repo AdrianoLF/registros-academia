@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { assertEmail, assertBirthDate, assertCpf } from '../src/domain/validators';
+import { assertEmail, assertBirthDate, assertCpf } from '../src/handler/fieldValidators';
 
 describe('assertEmail', () => {
   it('accepts a valid email', () => {

@@ -1,38 +1,29 @@
+import { Role, Gender as GenderEnum } from '@prisma/client';
 import { prisma } from './prisma';
-import { Person, PersonProps, Roles, Genders, codeOf, nameOf } from '../domain/Person';
+import { Person, PersonProps } from '../domain/Person';
+import { Gender } from '../domain/Gender';
 import { Student } from '../domain/Student';
 import { Teacher } from '../domain/Teacher';
 
-const subclasses: Record<number, new (props: PersonProps) => Person> = {
-  [Roles.STUDENT]: Student,
-  [Roles.TEACHER]: Teacher,
+const subclasses: Record<Role, new (props: PersonProps) => Person> = {
+  STUDENT: Student,
+  TEACHER: Teacher,
 };
 
-type Row = {
-  id?: number;
+export type PersonData = {
   name: string;
   email: string;
   birthDate: Date;
-  gender: number;
+  gender: GenderEnum;
   cpf: string;
-  role: number;
+  role: Role;
 };
 
-function toDomain({ role, gender, ...props }: Row): Person {
-  return new subclasses[role]({
-    ...props,
-    gender: nameOf(Genders, gender)
-  });
+type Row = PersonData & { id: number };
+
+export function toDomain({ role, gender, ...rest }: Row): Person {
+  return new subclasses[role]({ ...rest, gender: new Gender(gender) });
 }
-
-type CreateInput = {
-  name: string;
-  email: string;
-  birthDate: Date;
-  gender: string;
-  cpf: string;
-  role: string;
-};
 
 export class PersonRepository {
   async findAll(): Promise<Person[]> {
@@ -40,11 +31,20 @@ export class PersonRepository {
     return rows.map(toDomain);
   }
 
-  async create({ role, gender, ...data }: CreateInput): Promise<Person> {
-    const enums = { role: codeOf(Roles, role), gender: codeOf(Genders, gender) };
-    const person = toDomain({ ...data, ...enums });
-    const saved = await prisma.person.create({ data: { ...data, ...enums } });
+  async create(data: PersonData): Promise<Person> {
+    const person = toDomain({ ...data, id: 0 });
+    const saved = await prisma.person.create({ data });
     person.id = saved.id;
     return person;
+  }
+
+  async update(id: number, data: PersonData): Promise<Person> {
+    const person = toDomain({ ...data, id });
+    await prisma.person.update({ where: { id }, data });
+    return person;
+  }
+
+  async delete(id: number): Promise<void> {
+    await prisma.person.delete({ where: { id } });
   }
 }

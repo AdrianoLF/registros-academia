@@ -16,23 +16,3 @@ model Person {
   cpf       String   @unique
   role      Int      @default(0)
 }
-
-model Student {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  birthDate DateTime
-  gender    String
-  cpf       String   @unique
-  createdAt DateTime @default(now())
-}
-
-model Teacher {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  birthDate DateTime
-  gender    String
-  cpf       String   @unique
-  createdAt DateTime @default(now())
-}

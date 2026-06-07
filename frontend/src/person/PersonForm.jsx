@@ -1,6 +1,8 @@
+// TODO: buscar planos da API quando backend tiver rota /plans
 import Form from '../shared/Form';
+import { PLANS } from '../plans/mockPlans';
 
-const empty = { name: '', email: '', birthDate: '', gender: '', cpf: '' };
+const empty = { name: '', email: '', birthDate: '', gender: '', cpf: '', planId: '' };
 
 const input =
   'border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
@@ -52,6 +54,19 @@ function PersonForm({ form, setForm, onSubmit, onCancel, editing }) {
         required
         className={input}
       />
+      <select
+        value={form.planId}
+        onChange={(e) => update('planId', e.target.value)}
+        required
+        className={input}
+      >
+        <option value="">Selecione um plano</option>
+        {PLANS.map((plan) => (
+          <option key={plan.id} value={plan.id}>
+            {plan.name} — R$ {plan.price.toFixed(2)}
+          </option>
+        ))}
+      </select>
     </Form>
   );
 }

@@ -1,14 +1,21 @@
+// TODO: buscar planos da API quando backend tiver rota /plans
 import { useEffect, useState } from 'react';
 import { getPersons, createPerson, updatePerson, deletePerson } from './api';
 import { useError } from '../shared/ErrorContext';
 import PersonForm, { empty } from './PersonForm';
 import List from '../shared/List';
+import { PLANS } from '../plans/mockPlans';
 
 const genderLabels = { MALE: 'Masculino', FEMALE: 'Feminino', OTHER: 'Outro' };
 
 function age(birthDate) {
   const diff = Date.now() - new Date(birthDate).getTime();
   return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+}
+// TODO: planId vem vazio do backend por enquanto pois o backend ainda não suporta esse campo
+function getPlanName(planId) {
+  const plan = PLANS.find((p) => p.id === Number(planId));
+  return plan ? plan.name : 'Sem plano';
 }
 
 function PersonManager({ title, role, emptyText }) {
@@ -38,6 +45,7 @@ function PersonManager({ title, role, emptyText }) {
       birthDate: p.birthDate.slice(0, 10),
       gender: p.gender,
       cpf: p.cpf,
+      planId: p.planId || '',
     });
   }
 
@@ -93,6 +101,7 @@ function PersonManager({ title, role, emptyText }) {
                   <span>{genderLabels[p.gender] || p.gender}</span>
                   <span>{age(p.birthDate)} anos</span>
                   <span>{p.cpf}</span>
+                  <span className="text-indigo-500 font-medium">{getPlanName(p.planId)}</span>
                 </div>
               </div>
               <div className="flex gap-2 shrink-0">

@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "ts-node src/server.ts",
-    "start:docker": "prisma migrate deploy && npm run dev",
+    "dev:watch": "node --watch-path=./src --watch -r ts-node/register src/server.ts",
+    "start:docker": "prisma migrate deploy && npm run dev:watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

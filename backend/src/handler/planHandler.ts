@@ -58,4 +58,13 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.put('/:id', async (req, res) => {
+  try {
+    const plan = await repository.update(Number(req.params.id), parseInput(req.body));
+    res.json(plan);
+  } catch (e) {
+    res.status(400).json({ error: (e as Error).message });
+  }
+});
+
 export default router;

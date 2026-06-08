@@ -60,4 +60,32 @@ export class PlanRepository {
       throw e;
     }
   }
+
+  async update(id: number, data: PlanData): Promise<Plan> {
+    if (data.enabled) {
+      const activeInSlot = await this.findActiveBySlot(data.qualityLevel, data.providerKind, data.type);
+      assertNoActiveSlotConflict(
+        activeInSlot
+          .filter((plan) => plan.id !== id)
+          .map((plan) => ({
+            qualityLevel: plan.qualityLevel,
+            providerKind: plan.providerKind,
+            type: plan.type,
+            enabled: plan.enabled,
+          })),
+        data
+      );
+    }
+    const plan = toDomain({ ...data, id });
+    try {
+      await prisma.plan.update({ where: { id }, data });
+      return plan;
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code === 'P2002') {
+        throw new Error('An active plan already exists for this slot');
+      }
+      throw e;
+    }
+  }
 }

@@ -1,13 +1,24 @@
 import { useEffect, useState } from 'react';
-import { getPlans, createPlan, formatCents } from './api';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { getPlans, createPlan, updatePlan, formatCents } from './api';
 import { getProviders } from '../providers/api';
 import { useError } from '../shared/ErrorContext';
-import Form from '../shared/Form';
+import PlanForm from './PlanForm';
 import List from '../shared/List';
+import Modal from '../shared/Modal';
+import Tabs from '../shared/Tabs';
+import LoadingPanel from '../shared/LoadingPanel';
+import IconButton, { PencilIcon } from '../shared/IconButton';
+import Toggle from '../shared/Toggle';
+import ConfirmModal from '../shared/ConfirmModal';
 
 const typeLabels = { DAILY: 'Diária', MONTHLY: 'Mensalista', ANNUAL: 'Anual' };
 const levelLabels = { BASIC: 'Básico', ADVANCED: 'Avançado', PRO: 'Pro' };
 const providerLabels = { CASH: 'Dinheiro', TOTALPASS: 'TotalPass', WELLHUB: 'Wellhub' };
+const tabs = [
+  { key: 'ativos', label: 'Ativos' },
+  { key: 'inativos', label: 'Inativos' },
+];
 
 const empty = {
   name: '',
@@ -15,11 +26,7 @@ const empty = {
   type: '',
   qualityLevel: '',
   providerKind: 'CASH',
-  enabled: true,
 };
-
-const input =
-  'border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
 function acceptedTypes(provider) {
   if (!provider) {
@@ -32,28 +39,71 @@ function acceptedTypes(provider) {
   return types;
 }
 
+function toPlanPayload(form, enabled) {
+  return {
+    name: form.name,
+    type: form.type,
+    qualityLevel: form.qualityLevel,
+    priceCents: Math.round(parseFloat(form.price) * 100),
+    providerKind: form.providerKind,
+    enabled,
+  };
+}
+
+function toForm(plan) {
+  return {
+    name: plan.name,
+    price: String(plan.priceCents / 100),
+    type: plan.type,
+    qualityLevel: plan.qualityLevel,
+    providerKind: plan.providerKind,
+  };
+}
+
 function Plans() {
+  const { tab: listTab } = useParams();
+  const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [providers, setProviders] = useState([]);
   const [form, setForm] = useState(empty);
+  const [editForm, setEditForm] = useState(empty);
+  const [editing, setEditing] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingCreate, setLoadingCreate] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [togglingId, setTogglingId] = useState(null);
+  const [confirmToggle, setConfirmToggle] = useState(null);
   const showError = useError();
 
-  const selectedProvider = providers.find((p) => p.kind === form.providerKind);
-  const typesForProvider = acceptedTypes(selectedProvider);
-
-  function load() {
-    Promise.all([getPlans(), getProviders()])
-      .then(([planList, providerList]) => {
-        setPlans(planList);
-        setProviders(providerList);
-      })
-      .catch((e) => showError(e.message));
+  if (listTab !== 'ativos' && listTab !== 'inativos') {
+    return <Navigate to="/planos/ativos" replace />;
   }
 
-  useEffect(load, []);
+  const showActive = listTab === 'ativos';
+  const selectedProvider = providers.find((p) => p.kind === form.providerKind);
+  const typesForProvider = acceptedTypes(selectedProvider);
+  const editProvider = providers.find((p) => p.kind === editForm.providerKind);
+  const editTypesForProvider = acceptedTypes(editProvider);
 
-  function update(field, value) {
-    setForm((prev) => {
+  async function load() {
+    setLoading(true);
+    try {
+      const [planList, providerList] = await Promise.all([getPlans(), getProviders()]);
+      setPlans(planList);
+      setProviders(providerList);
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function updateForm(setter, field, value) {
+    setter((prev) => {
       const next = { ...prev, [field]: value };
       if (field === 'providerKind') {
         const provider = providers.find((p) => p.kind === value);
@@ -66,25 +116,61 @@ function Plans() {
     });
   }
 
-  function reset() {
-    setForm(empty);
+  const filtered = plans.filter((p) => (showActive ? p.enabled : !p.enabled));
+
+  function openEdit(plan) {
+    setEditing(plan);
+    setEditForm(toForm(plan));
   }
 
-  async function handleSubmit(e) {
+  function closeEdit() {
+    setEditing(null);
+    setEditForm(empty);
+  }
+
+  async function handleCreate(e) {
     e.preventDefault();
+    setLoadingCreate(true);
     try {
-      await createPlan({
-        name: form.name,
-        type: form.type,
-        qualityLevel: form.qualityLevel,
-        priceCents: Math.round(parseFloat(form.price) * 100),
-        providerKind: form.providerKind,
-        enabled: form.enabled,
-      });
-      reset();
-      load();
+      await createPlan(toPlanPayload(form, true));
+      setForm(empty);
+      await load();
     } catch (err) {
       showError(err.message);
+    } finally {
+      setLoadingCreate(false);
+    }
+  }
+
+  async function handleEdit(e) {
+    e.preventDefault();
+    setLoadingEdit(true);
+    try {
+      await updatePlan(editing.id, toPlanPayload(editForm, editing.enabled));
+      closeEdit();
+      await load();
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setLoadingEdit(false);
+    }
+  }
+
+  function requestToggle(plan, nextEnabled) {
+    setConfirmToggle({ plan, nextEnabled });
+  }
+
+  async function confirmTogglePlan() {
+    const { plan, nextEnabled } = confirmToggle;
+    setTogglingId(plan.id);
+    try {
+      await updatePlan(plan.id, toPlanPayload(toForm(plan), nextEnabled));
+      setConfirmToggle(null);
+      await load();
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setTogglingId(null);
     }
   }
 
@@ -95,119 +181,115 @@ function Plans() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,1fr)_minmax(0,2fr)] gap-6 items-start">
         <section>
           <h2 className="text-lg font-semibold mb-4">Provedores</h2>
-          <List
-            items={providers}
-            empty="Nenhum provedor disponível."
-            renderItem={(provider) => (
-              <li key={provider.kind} className="px-4 py-3">
-                <div className="font-medium">{providerLabels[provider.kind] || provider.kind}</div>
-                <div className="text-sm text-slate-400 mt-1 flex flex-wrap gap-3">
-                  {provider.acceptsDaily && <span>Diária</span>}
-                  {provider.acceptsMonthly && <span>Mensalista</span>}
-                  {provider.acceptsAnnual && <span>Anual</span>}
-                </div>
-              </li>
-            )}
-          />
+          {loading ? (
+            <LoadingPanel label="Carregando provedores..." />
+          ) : (
+            <List
+              items={providers}
+              empty="Nenhum provedor disponível."
+              renderItem={(provider) => (
+                <li key={provider.kind} className="px-4 py-3">
+                  <div className="font-medium">{providerLabels[provider.kind] || provider.kind}</div>
+                  <div className="text-sm text-slate-400 mt-1 flex flex-wrap gap-3">
+                    {provider.acceptsDaily && <span>Diária</span>}
+                    {provider.acceptsMonthly && <span>Mensalista</span>}
+                    {provider.acceptsAnnual && <span>Anual</span>}
+                  </div>
+                </li>
+              )}
+            />
+          )}
         </section>
 
         <section className="space-y-6">
           <div>
             <h2 className="text-lg font-semibold mb-4">Novo plano</h2>
-            <Form onSubmit={handleSubmit} submitLabel="Adicionar" className="mb-0">
-              <input
-                placeholder="Nome do plano"
-                value={form.name}
-                onChange={(e) => update('name', e.target.value)}
-                required
-                className={input}
-              />
-              <input
-                type="number"
-                placeholder="Preço (R$)"
-                value={form.price}
-                onChange={(e) => update('price', e.target.value)}
-                required
-                min="0"
-                step="0.01"
-                className={input}
-              />
-              <select
-                value={form.providerKind}
-                onChange={(e) => update('providerKind', e.target.value)}
-                required
-                className={input}
-              >
-                {providers.map((provider) => (
-                  <option key={provider.kind} value={provider.kind}>
-                    {providerLabels[provider.kind] || provider.kind}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={form.type}
-                onChange={(e) => update('type', e.target.value)}
-                required
-                className={input}
-              >
-                <option value="">Tipo do plano</option>
-                {typesForProvider.map((type) => (
-                  <option key={type} value={type}>
-                    {typeLabels[type]}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={form.qualityLevel}
-                onChange={(e) => update('qualityLevel', e.target.value)}
-                required
-                className={input}
-              >
-                <option value="">Nível do plano</option>
-                <option value="BASIC">Básico</option>
-                <option value="ADVANCED">Avançado</option>
-                <option value="PRO">Pro</option>
-              </select>
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={form.enabled}
-                  onChange={(e) => update('enabled', e.target.checked)}
-                />
-                Ativo
-              </label>
-            </Form>
+            <PlanForm
+              form={form}
+              onChange={(field, value) => updateForm(setForm, field, value)}
+              onSubmit={handleCreate}
+              providers={providers}
+              typesForProvider={typesForProvider}
+              typeLabels={typeLabels}
+              providerLabels={providerLabels}
+              submitLabel="Adicionar"
+              loading={loadingCreate}
+            />
           </div>
 
           <div>
             <h2 className="text-lg font-semibold mb-4">Planos cadastrados</h2>
-            <List
-              items={plans}
-              empty="Nenhum plano cadastrado."
-              renderItem={(plan) => (
-                <li key={plan.id} className="px-4 py-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex flex-wrap gap-3 items-center">
-                        <span className="font-medium">{plan.name}</span>
-                        <span className="text-slate-500">R$ {formatCents(plan.priceCents)}</span>
-                        {!plan.enabled && (
-                          <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded">Inativo</span>
-                        )}
+            <Tabs tabs={tabs} active={listTab} onChange={(key) => navigate(`/planos/${key}`)} />
+
+            {loading ? (
+              <LoadingPanel />
+            ) : (
+              <List
+                items={filtered}
+                empty={showActive ? 'Nenhum plano ativo.' : 'Nenhum plano inativo.'}
+                renderItem={(plan) => (
+                  <li key={plan.id} className="px-4 py-3">
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <div className="flex flex-wrap gap-3 items-center">
+                          <span className="font-medium">{plan.name}</span>
+                          <span className="text-slate-500">R$ {formatCents(plan.priceCents)}</span>
+                        </div>
+                        <div className="text-sm text-slate-400 mt-1 flex flex-wrap gap-4">
+                          <span>{typeLabels[plan.type]}</span>
+                          <span>{levelLabels[plan.qualityLevel]}</span>
+                          <span>{providerLabels[plan.providerKind] || plan.providerKind}</span>
+                        </div>
                       </div>
-                      <div className="text-sm text-slate-400 mt-1 flex flex-wrap gap-4">
-                        <span>{typeLabels[plan.type]}</span>
-                        <span>{levelLabels[plan.qualityLevel]}</span>
-                        <span>{providerLabels[plan.providerKind] || plan.providerKind}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Toggle
+                          enabled={plan.enabled}
+                          loading={togglingId === plan.id}
+                          onChange={(next) => requestToggle(plan, next)}
+                        />
+                        <IconButton label="Editar" onClick={() => openEdit(plan)}>
+                          <PencilIcon />
+                        </IconButton>
                       </div>
                     </div>
-                  </div>
-                </li>
-              )}
-            />
+                  </li>
+                )}
+              />
+            )}
           </div>
         </section>
       </div>
+
+      <Modal open={editing !== null} title="Editar plano" onClose={closeEdit}>
+        <PlanForm
+          form={editForm}
+          onChange={(field, value) => updateForm(setEditForm, field, value)}
+          onSubmit={handleEdit}
+          onCancel={closeEdit}
+          providers={providers}
+          typesForProvider={editTypesForProvider}
+          typeLabels={typeLabels}
+          providerLabels={providerLabels}
+          submitLabel="Salvar"
+          loading={loadingEdit}
+          plain
+        />
+      </Modal>
+
+      <ConfirmModal
+        open={confirmToggle !== null}
+        title={confirmToggle?.nextEnabled ? 'Ativar plano' : 'Desativar plano'}
+        message={
+          confirmToggle
+            ? `Tem certeza que deseja ${confirmToggle.nextEnabled ? 'ativar' : 'desativar'} o plano ${confirmToggle.plan.name}?`
+            : ''
+        }
+        confirmLabel={confirmToggle?.nextEnabled ? 'Ativar' : 'Desativar'}
+        danger={confirmToggle ? !confirmToggle.nextEnabled : false}
+        loading={togglingId !== null}
+        onConfirm={confirmTogglePlan}
+        onCancel={() => setConfirmToggle(null)}
+      />
     </div>
   );
 }

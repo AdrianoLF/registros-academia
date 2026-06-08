@@ -44,6 +44,7 @@ model Person {
   gender    Gender
   cpf       String   @unique
   role      Role     @default(STUDENT)
+  enabled   Boolean  @default(true)
   planId    Int?
   plan      Plan?    @relation(fields: [planId], references: [id])
 }

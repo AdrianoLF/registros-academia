@@ -35,10 +35,3 @@ export async function updatePerson(id, data) {
   return res.json();
 }
 
-export async function deletePerson(id) {
-  const res = await fetch(`${API}/persons/${id}`, { method: 'DELETE' });
-  if (!res.ok) {
-    const body = await res.json();
-    throw new Error(body.error || 'Erro ao excluir');
-  }
-}

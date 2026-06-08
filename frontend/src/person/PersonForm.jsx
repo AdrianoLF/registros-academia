@@ -6,7 +6,17 @@ const empty = { name: '', email: '', birthDate: '', gender: '', cpf: '', planId:
 const input =
   'border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
-function PersonForm({ form, setForm, onSubmit, onCancel, editing, plans, showPlan }) {
+function PersonForm({
+  form,
+  setForm,
+  onSubmit,
+  onCancel,
+  submitLabel = 'Salvar',
+  plans,
+  showPlan,
+  loading = false,
+  plain = false,
+}) {
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
@@ -14,7 +24,14 @@ function PersonForm({ form, setForm, onSubmit, onCancel, editing, plans, showPla
   const activePlans = plans.filter((plan) => plan.enabled);
 
   return (
-    <Form onSubmit={onSubmit} submitLabel={editing ? 'Salvar' : 'Adicionar'} onCancel={editing ? onCancel : undefined}>
+    <Form
+      onSubmit={onSubmit}
+      submitLabel={submitLabel}
+      onCancel={onCancel}
+      loading={loading}
+      plain={plain}
+      className={plain ? 'mb-0' : ''}
+    >
       <input
         placeholder="Nome"
         value={form.name}

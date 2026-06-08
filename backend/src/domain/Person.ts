@@ -8,6 +8,7 @@ export type PersonProps = {
   gender: Gender;
   cpf: string;
   planId?: number | null;
+  enabled?: boolean;
 };
 
 export abstract class Person {
@@ -17,6 +18,7 @@ export abstract class Person {
   birthDate!: Date;
   gender!: Gender;
   cpf!: string;
+  enabled!: boolean;
   planId!: number | null;
 
   constructor(props: PersonProps) {
@@ -26,6 +28,16 @@ export abstract class Person {
   abstract get role(): string;
 
   toJSON() {
-    return { ...this, gender: this.gender.name, role: this.role };
+    return {
+      id: this.id,
+      name: this.name,
+      email: this.email,
+      birthDate: this.birthDate,
+      gender: this.gender.name,
+      cpf: this.cpf,
+      planId: this.planId,
+      enabled: this.enabled ?? true,
+      role: this.role,
+    };
   }
 }

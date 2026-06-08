@@ -24,6 +24,16 @@ function parsePlanId(value: unknown): number | null {
   return id;
 }
 
+function parseEnabled(value: unknown): boolean {
+  if (value === undefined) {
+    return true;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  throw new Error('Invalid enabled value');
+}
+
 function parseInput(body: Record<string, unknown>) {
   const email = String(body.email);
   const birthDate = new Date(String(body.birthDate));
@@ -41,6 +51,7 @@ function parseInput(body: Record<string, unknown>) {
     cpf,
     role,
     planId,
+    enabled: parseEnabled(body.enabled),
   };
 }
 
@@ -61,15 +72,6 @@ router.put('/:id', async (req, res) => {
   try {
     const person = await repository.update(Number(req.params.id), parseInput(req.body));
     res.json(person);
-  } catch (e) {
-    res.status(400).json({ error: (e as Error).message });
-  }
-});
-
-router.delete('/:id', async (req, res) => {
-  try {
-    await repository.delete(Number(req.params.id));
-    res.status(204).end();
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }

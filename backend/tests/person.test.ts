@@ -13,6 +13,7 @@ const props = {
   gender: new Gender('MALE'),
   cpf: '529.982.247-25',
   planId: 1,
+  enabled: true,
 };
 
 function yearsAgo(years: number): Date {
@@ -61,10 +62,11 @@ describe('Person polymorphism', () => {
     expect(() => new Teacher({ ...props, planId: null, birthDate: yearsAgo(23) })).not.toThrow();
   });
 
-  it('serializes gender and role as plain values', () => {
+  it('serializes gender, role and enabled as plain values', () => {
     const json = new Student(props).toJSON();
     expect(json.gender).toBe('MALE');
     expect(json.role).toBe('STUDENT');
+    expect(json.enabled).toBe(true);
   });
 });
 
@@ -78,6 +80,7 @@ describe('toDomain mapping', () => {
     cpf: '529.982.247-25',
     role: Role.TEACHER,
     planId: null,
+    enabled: true,
   };
 
   it('maps a TEACHER row to a Teacher instance', () => {

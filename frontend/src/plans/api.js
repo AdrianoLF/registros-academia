@@ -8,6 +8,19 @@ export async function getPlans() {
   return res.json();
 }
 
+export async function updatePlan(id, data) {
+  const res = await fetch(`${API}/plans/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    throw new Error(body.error || 'Erro ao salvar plano');
+  }
+  return res.json();
+}
+
 export async function createPlan(data) {
   const res = await fetch(`${API}/plans`, {
     method: 'POST',

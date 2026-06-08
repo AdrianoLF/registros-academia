@@ -23,6 +23,7 @@ const input = {
   cpf: '529.982.247-25',
   role: Role.STUDENT,
   planId: 1,
+  enabled: true,
 };
 
 function yearsAgo(years: number): Date {
@@ -83,10 +84,3 @@ describe('PersonRepository.update', () => {
   });
 });
 
-describe('PersonRepository.delete', () => {
-  it('deletes by id', async () => {
-    person.delete.mockResolvedValue({});
-    await repo.delete(9);
-    expect(person.delete).toHaveBeenCalledWith({ where: { id: 9 } });
-  });
-});

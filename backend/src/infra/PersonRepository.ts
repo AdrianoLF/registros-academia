@@ -18,12 +18,17 @@ export type PersonData = {
   cpf: string;
   role: Role;
   planId: number | null;
+  enabled: boolean;
 };
 
 type Row = PersonData & { id: number };
 
-export function toDomain({ role, gender, ...rest }: Row): Person {
-  return new subclasses[role]({ ...rest, gender: new Gender(gender) });
+export function toDomain({ role, gender, enabled, ...rest }: Row): Person {
+  return new subclasses[role]({
+    ...rest,
+    gender: new Gender(gender),
+    enabled: enabled ?? true,
+  });
 }
 
 export class PersonRepository {
@@ -45,7 +50,4 @@ export class PersonRepository {
     return person;
   }
 
-  async delete(id: number): Promise<void> {
-    await prisma.person.delete({ where: { id } });
-  }
 }

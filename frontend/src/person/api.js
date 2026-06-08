@@ -1,12 +1,14 @@
+import { buildQuery, PAGE_SIZE } from '../shared/pageQuery';
+
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-export async function getPersons(role) {
-  const res = await fetch(`${API}/persons`);
+export async function getPersonsPage({ role, enabled, search, page, limit = PAGE_SIZE }) {
+  const res = await fetch(`${API}/persons?${buildQuery({ role, enabled, search, page, limit })}`);
   if (!res.ok) {
-    throw new Error('Erro ao carregar');
+    const body = await res.json();
+    throw new Error(body.error || 'Erro ao carregar');
   }
-  const all = await res.json();
-  return all.filter((p) => p.role === role);
+  return res.json();
 }
 
 export async function createPerson(data) {
@@ -34,4 +36,3 @@ export async function updatePerson(id, data) {
   }
   return res.json();
 }
-

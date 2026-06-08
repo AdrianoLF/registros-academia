@@ -1,11 +1,18 @@
+import { buildQuery, PAGE_SIZE } from '../shared/pageQuery';
+
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-export async function getPlans() {
-  const res = await fetch(`${API}/plans`);
+export async function getPlansPage({ enabled, search, page, limit = PAGE_SIZE }) {
+  const res = await fetch(`${API}/plans?${buildQuery({ enabled, search, page, limit })}`);
   if (!res.ok) {
     throw new Error('Erro ao carregar planos');
   }
   return res.json();
+}
+
+export async function getPlans() {
+  const result = await getPlansPage({ page: 1, limit: 100 });
+  return result.items;
 }
 
 export async function updatePlan(id, data) {

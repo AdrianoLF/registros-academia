@@ -21,7 +21,9 @@ function PersonForm({
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  const activePlans = plans.filter((plan) => plan.enabled);
+  const activePlans = plans.filter(
+    (plan) => plan.enabled && !(plan.type === 'DAILY' && plan.providerKind === 'CASH')
+  );
 
   return (
     <Form

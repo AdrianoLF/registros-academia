@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Role, Gender } from '@prisma/client';
 import { PersonRepository } from '../infra/PersonRepository';
 import { assertEmail, assertBirthDate, assertCpf } from './fieldValidators';
+import { parseEnabledFilter, parsePageQuery } from '../domain/shared/pagination';
 
 const router = Router();
 const repository = new PersonRepository();
@@ -55,8 +56,19 @@ function parseInput(body: Record<string, unknown>) {
   };
 }
 
-router.get('/', async (_req, res) => {
-  res.json(await repository.findAll());
+router.get('/', async (req, res) => {
+  try {
+    const page = parsePageQuery(req.query);
+    const role = req.query.role ? toEnum(Role, req.query.role) : undefined;
+    const enabled = parseEnabledFilter(req.query.enabled);
+    const result = await repository.findPage({ ...page, role, enabled });
+    res.json({
+      ...result,
+      items: result.items.map((person) => person.toJSON()),
+    });
+  } catch (e) {
+    res.status(400).json({ error: (e as Error).message });
+  }
 });
 
 router.post('/', async (req, res) => {

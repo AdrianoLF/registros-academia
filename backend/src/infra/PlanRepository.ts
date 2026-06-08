@@ -1,5 +1,6 @@
-import { PlanType } from '@prisma/client';
+import { PlanType, ProviderKind, Prisma } from '@prisma/client';
 import { prisma } from './prisma';
+import { buildPageResult, PageResult, ParsedPageQuery, skip } from '../domain/shared/pagination';
 import { Plan, PlanProps, assertNoActiveSlotConflict } from '../domain/plan/Plan';
 import { DailyPlan } from '../domain/plan/DailyPlan';
 import { MonthlyPlan } from '../domain/plan/MonthlyPlan';
@@ -19,10 +20,43 @@ export function toDomain(row: Row): Plan {
   return new subclasses[row.type](row);
 }
 
+export type PlanPageFilter = ParsedPageQuery & {
+  enabled?: boolean;
+};
+
 export class PlanRepository {
-  async findAll(): Promise<Plan[]> {
-    const rows = await prisma.plan.findMany();
-    return rows.map(toDomain);
+  async findPage(filter: PlanPageFilter): Promise<PageResult<Plan>> {
+    const where: Prisma.PlanWhereInput = {};
+    if (filter.enabled !== undefined) {
+      where.enabled = filter.enabled;
+    }
+    if (filter.search) {
+      where.name = { contains: filter.search, mode: 'insensitive' };
+    }
+    const total = await prisma.plan.count({ where });
+    const rows = await prisma.plan.findMany({
+      where,
+      orderBy: { name: 'asc' },
+      skip: skip(filter.page, filter.limit),
+      take: filter.limit,
+    });
+    return buildPageResult(rows.map(toDomain), total, filter.page, filter.limit);
+  }
+
+  async findById(id: number): Promise<Plan | null> {
+    const row = await prisma.plan.findUnique({ where: { id } });
+    return row ? toDomain(row) : null;
+  }
+
+  async findActiveDailyCash(): Promise<Plan | null> {
+    const row = await prisma.plan.findFirst({
+      where: {
+        type: PlanType.DAILY,
+        providerKind: ProviderKind.CASH,
+        enabled: true,
+      },
+    });
+    return row ? toDomain(row) : null;
   }
 
   async findActiveBySlot(

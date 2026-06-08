@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 
 const items = [
-  { to: '/relatorios', label: 'Relatórios' },
+  { to: '/home', label: 'Home' },
   { to: '/alunos', label: 'Alunos' },
   { to: '/professores', label: 'Professores' },
   { to: '/planos', label: 'Planos' },
@@ -11,7 +11,7 @@ function TopBar() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 shadow-xl shadow-slate-950/30">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-8 px-6">
-        <NavLink to="/relatorios" className="flex items-center gap-3">
+        <NavLink to="/home" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400 to-violet-500 shadow-lg shadow-indigo-500/30 ring-1 ring-white/20">
             <span className="text-sm font-bold text-white">A</span>
           </div>

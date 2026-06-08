@@ -1,5 +1,6 @@
-import { Role, Gender as GenderEnum } from '@prisma/client';
+import { Role, Gender as GenderEnum, Prisma } from '@prisma/client';
 import { prisma } from './prisma';
+import { buildPageResult, PageResult, ParsedPageQuery, skip } from '../domain/shared/pagination';
 import { Person, PersonProps } from '../domain/Person';
 import { Gender } from '../domain/Gender';
 import { Student } from '../domain/Student';
@@ -31,10 +32,49 @@ export function toDomain({ role, gender, enabled, ...rest }: Row): Person {
   });
 }
 
+export type PersonPageFilter = ParsedPageQuery & {
+  role?: Role;
+  enabled?: boolean;
+};
+
+function buildPersonWhere(filter: PersonPageFilter): Prisma.PersonWhereInput {
+  const where: Prisma.PersonWhereInput = {};
+  if (filter.role) {
+    where.role = filter.role;
+  }
+  if (filter.enabled !== undefined) {
+    where.enabled = filter.enabled;
+  }
+  if (filter.search) {
+    const digits = filter.search.replace(/\D/g, '');
+    const or: Prisma.PersonWhereInput[] = [
+      { name: { contains: filter.search, mode: 'insensitive' } },
+      { email: { contains: filter.search, mode: 'insensitive' } },
+    ];
+    if (digits) {
+      or.push({ cpf: { contains: digits } });
+    }
+    where.OR = or;
+  }
+  return where;
+}
+
 export class PersonRepository {
-  async findAll(): Promise<Person[]> {
-    const rows = await prisma.person.findMany();
-    return rows.map(toDomain);
+  async findPage(filter: PersonPageFilter): Promise<PageResult<Person>> {
+    const where = buildPersonWhere(filter);
+    const total = await prisma.person.count({ where });
+    const rows = await prisma.person.findMany({
+      where,
+      orderBy: { name: 'asc' },
+      skip: skip(filter.page, filter.limit),
+      take: filter.limit,
+    });
+    return buildPageResult(rows.map(toDomain), total, filter.page, filter.limit);
+  }
+
+  async findById(id: number): Promise<Person | null> {
+    const row = await prisma.person.findUnique({ where: { id } });
+    return row ? toDomain(row) : null;
   }
 
   async create(data: PersonData): Promise<Person> {

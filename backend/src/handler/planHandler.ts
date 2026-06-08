@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PlanType, QualityLevel, ProviderKind } from '@prisma/client';
 import { PlanRepository } from '../infra/PlanRepository';
+import { parseEnabledFilter, parsePageQuery } from '../domain/shared/pagination';
 
 const router = Router();
 const repository = new PlanRepository();
@@ -45,8 +46,18 @@ function parseInput(body: Record<string, unknown>) {
   };
 }
 
-router.get('/', async (_req, res) => {
-  res.json(await repository.findAll());
+router.get('/', async (req, res) => {
+  try {
+    const page = parsePageQuery(req.query);
+    const enabled = parseEnabledFilter(req.query.enabled);
+    const result = await repository.findPage({ ...page, enabled });
+    res.json({
+      ...result,
+      items: result.items.map((plan) => plan.toJSON()),
+    });
+  } catch (e) {
+    res.status(400).json({ error: (e as Error).message });
+  }
 });
 
 router.post('/', async (req, res) => {

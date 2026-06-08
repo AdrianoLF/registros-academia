@@ -18,6 +18,24 @@ enum Gender {
   OTHER
 }
 
+enum ProviderKind {
+  CASH
+  TOTALPASS
+  WELLHUB
+}
+
+enum PlanType {
+  DAILY
+  MONTHLY
+  ANNUAL
+}
+
+enum QualityLevel {
+  BASIC
+  ADVANCED
+  PRO
+}
+
 model Person {
   id        Int      @id @default(autoincrement())
   name      String
@@ -26,4 +44,14 @@ model Person {
   gender    Gender
   cpf       String   @unique
   role      Role     @default(STUDENT)
+}
+
+model Plan {
+  id           Int          @id @default(autoincrement())
+  name         String
+  type         PlanType
+  qualityLevel QualityLevel
+  priceCents   Int
+  providerKind ProviderKind @default(CASH)
+  enabled      Boolean      @default(true)
 }

@@ -22,6 +22,7 @@ const input = {
   gender: Gender.FEMALE,
   cpf: '529.982.247-25',
   role: Role.STUDENT,
+  planId: 1,
 };
 
 function yearsAgo(years: number): Date {
@@ -51,6 +52,16 @@ describe('PersonRepository.create', () => {
     );
     expect(person.create).not.toHaveBeenCalled();
   });
+
+  it('persists students without a plan', async () => {
+    person.create.mockResolvedValue({ id: 43 });
+    const result = await repo.create({ ...input, planId: null });
+    expect(person.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ planId: null }),
+    });
+    expect(result).toBeInstanceOf(Student);
+    expect(result.planId).toBeNull();
+  });
 });
 
 describe('PersonRepository.update', () => {
@@ -66,7 +77,7 @@ describe('PersonRepository.update', () => {
 
   it('rejects business rule violations before touching the database', async () => {
     await expect(
-      repo.update(7, { ...input, role: Role.TEACHER, birthDate: yearsAgo(20) })
+      repo.update(7, { ...input, role: Role.TEACHER, planId: null, birthDate: yearsAgo(20) })
     ).rejects.toThrow('Minimum age is 23');
     expect(person.update).not.toHaveBeenCalled();
   });

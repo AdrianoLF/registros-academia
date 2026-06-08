@@ -1,10 +1,9 @@
-// TODO: buscar planos da API quando backend tiver rota /plans
 import { useEffect, useState } from 'react';
 import { getPersons, createPerson, updatePerson, deletePerson } from './api';
+import { getPlans } from '../plans/api';
 import { useError } from '../shared/ErrorContext';
 import PersonForm, { empty } from './PersonForm';
 import List from '../shared/List';
-import { PLANS } from '../plans/mockPlans';
 
 const genderLabels = { MALE: 'Masculino', FEMALE: 'Feminino', OTHER: 'Outro' };
 
@@ -12,25 +11,38 @@ function age(birthDate) {
   const diff = Date.now() - new Date(birthDate).getTime();
   return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
 }
-// TODO: planId vem vazio do backend por enquanto pois o backend ainda não suporta esse campo
-function getPlanName(planId) {
-  const plan = PLANS.find((p) => p.id === Number(planId));
-  return plan ? plan.name : 'Sem plano';
-}
 
 function PersonManager({ title, role, emptyText }) {
   const [people, setPeople] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [form, setForm] = useState(empty);
   const [editingId, setEditingId] = useState(null);
   const showError = useError();
+  const isStudent = role === 'STUDENT';
 
-  function load() {
+  function getPlanName(planId) {
+    const plan = plans.find((p) => p.id === Number(planId));
+    return plan ? plan.name : 'Sem plano';
+  }
+
+  function loadPeople() {
     getPersons(role)
       .then(setPeople)
       .catch((e) => showError(e.message));
   }
 
-  useEffect(load, [role]);
+  function loadPlans() {
+    getPlans()
+      .then(setPlans)
+      .catch((e) => showError(e.message));
+  }
+
+  useEffect(() => {
+    loadPeople();
+    if (isStudent) {
+      loadPlans();
+    }
+  }, [role]);
 
   function reset() {
     setForm(empty);
@@ -45,20 +57,24 @@ function PersonManager({ title, role, emptyText }) {
       birthDate: p.birthDate.slice(0, 10),
       gender: p.gender,
       cpf: p.cpf,
-      planId: p.planId || '',
+      planId: p.planId != null ? String(p.planId) : '',
     });
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    const payload = { ...form, role };
+    if (!isStudent) {
+      delete payload.planId;
+    }
     try {
       if (editingId) {
-        await updatePerson(editingId, { ...form, role });
+        await updatePerson(editingId, payload);
       } else {
-        await createPerson({ ...form, role });
+        await createPerson(payload);
       }
       reset();
-      load();
+      loadPeople();
     } catch (err) {
       showError(err.message);
     }
@@ -70,7 +86,7 @@ function PersonManager({ title, role, emptyText }) {
       if (editingId === id) {
         reset();
       }
-      load();
+      loadPeople();
     } catch (err) {
       showError(err.message);
     }
@@ -85,6 +101,8 @@ function PersonManager({ title, role, emptyText }) {
         onSubmit={handleSubmit}
         onCancel={reset}
         editing={editingId !== null}
+        plans={plans}
+        showPlan={isStudent}
       />
       <List
         items={people}
@@ -101,7 +119,9 @@ function PersonManager({ title, role, emptyText }) {
                   <span>{genderLabels[p.gender] || p.gender}</span>
                   <span>{age(p.birthDate)} anos</span>
                   <span>{p.cpf}</span>
-                  <span className="text-indigo-500 font-medium">{getPlanName(p.planId)}</span>
+                  {isStudent && (
+                    <span className="text-indigo-500 font-medium">{getPlanName(p.planId)}</span>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2 shrink-0">

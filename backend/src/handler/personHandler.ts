@@ -13,20 +13,34 @@ function toEnum<T extends object>(values: T, value: unknown): T[keyof T] {
   throw new Error('Invalid enum value');
 }
 
+function parsePlanId(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+  const id = Number(value);
+  if (!Number.isInteger(id) || id < 1) {
+    throw new Error('Invalid plan');
+  }
+  return id;
+}
+
 function parseInput(body: Record<string, unknown>) {
   const email = String(body.email);
   const birthDate = new Date(String(body.birthDate));
   const cpf = String(body.cpf);
+  const role = toEnum(Role, body.role);
   assertEmail(email);
   assertBirthDate(birthDate);
   assertCpf(cpf);
+  const planId = role === Role.STUDENT ? parsePlanId(body.planId) : null;
   return {
     name: String(body.name),
     email,
     birthDate,
     gender: toEnum(Gender, body.gender),
     cpf,
-    role: toEnum(Role, body.role),
+    role,
+    planId,
   };
 }
 

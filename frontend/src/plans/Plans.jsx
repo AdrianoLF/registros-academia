@@ -1,70 +1,98 @@
-// Mock temporário — substituir por chamada à API quando backend tiver rota de planos
-import { useState } from 'react';
-import { PLANS as INITIAL_PLANS } from './mockPlans';
+import { useEffect, useState } from 'react';
+import { getPlans, createPlan, formatCents } from './api';
+import { getProviders } from '../providers/api';
+import { useError } from '../shared/ErrorContext';
 import Form from '../shared/Form';
 import List from '../shared/List';
 
 const typeLabels = { DAILY: 'Diária', MONTHLY: 'Mensalista', ANNUAL: 'Anual' };
 const levelLabels = { BASIC: 'Básico', ADVANCED: 'Avançado', PRO: 'Pro' };
+const providerLabels = { CASH: 'Dinheiro', TOTALPASS: 'TotalPass', WELLHUB: 'Wellhub' };
 
-const empty = { name: '', price: '', type: '', level: '' };
+const empty = {
+  name: '',
+  price: '',
+  type: '',
+  qualityLevel: '',
+  providerKind: 'CASH',
+  enabled: true,
+};
 
 const input =
   'border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
+function acceptedTypes(provider) {
+  if (!provider) {
+    return ['DAILY', 'MONTHLY', 'ANNUAL'];
+  }
+  const types = [];
+  if (provider.acceptsDaily) types.push('DAILY');
+  if (provider.acceptsMonthly) types.push('MONTHLY');
+  if (provider.acceptsAnnual) types.push('ANNUAL');
+  return types;
+}
+
 function Plans() {
-  const [plans, setPlans] = useState(INITIAL_PLANS);
+  const [plans, setPlans] = useState([]);
+  const [providers, setProviders] = useState([]);
   const [form, setForm] = useState(empty);
-  const [editingId, setEditingId] = useState(null);
+  const showError = useError();
+
+  const selectedProvider = providers.find((p) => p.kind === form.providerKind);
+  const typesForProvider = acceptedTypes(selectedProvider);
+
+  function load() {
+    Promise.all([getPlans(), getProviders()])
+      .then(([planList, providerList]) => {
+        setPlans(planList);
+        setProviders(providerList);
+      })
+      .catch((e) => showError(e.message));
+  }
+
+  useEffect(load, []);
 
   function update(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === 'providerKind') {
+        const provider = providers.find((p) => p.kind === value);
+        const allowed = acceptedTypes(provider);
+        if (next.type && !allowed.includes(next.type)) {
+          next.type = '';
+        }
+      }
+      return next;
+    });
   }
 
   function reset() {
     setForm(empty);
-    setEditingId(null);
   }
 
-  function startEdit(plan) {
-    setEditingId(plan.id);
-    setForm({
-      name: plan.name,
-      price: String(plan.price),
-      type: plan.type,
-      level: plan.level,
-    });
-  }
-
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    const data = { ...form, price: parseFloat(form.price) };
-
-    if (editingId) {
-      setPlans((prev) =>
-        prev.map((p) => (p.id === editingId ? { ...p, ...data } : p))
-      );
-    } else {
-      setPlans((prev) => [...prev, { ...data, id: Date.now() }]);
+    try {
+      await createPlan({
+        name: form.name,
+        type: form.type,
+        qualityLevel: form.qualityLevel,
+        priceCents: Math.round(parseFloat(form.price) * 100),
+        providerKind: form.providerKind,
+        enabled: form.enabled,
+      });
+      reset();
+      load();
+    } catch (err) {
+      showError(err.message);
     }
-
-    reset();
-  }
-
-  function handleDelete(id) {
-    setPlans((prev) => prev.filter((p) => p.id !== id));
-    if (editingId === id) reset();
   }
 
   return (
     <div className="max-w-3xl">
       <h1 className="text-2xl font-bold mb-6">Planos</h1>
 
-      <Form
-        onSubmit={handleSubmit}
-        submitLabel={editingId ? 'Salvar' : 'Adicionar'}
-        onCancel={editingId ? reset : undefined}
-      >
+      <Form onSubmit={handleSubmit} submitLabel="Adicionar">
         <input
           placeholder="Nome do plano"
           value={form.name}
@@ -83,19 +111,33 @@ function Plans() {
           className={input}
         />
         <select
+          value={form.providerKind}
+          onChange={(e) => update('providerKind', e.target.value)}
+          required
+          className={input}
+        >
+          {providers.map((provider) => (
+            <option key={provider.kind} value={provider.kind}>
+              {providerLabels[provider.kind] || provider.kind}
+            </option>
+          ))}
+        </select>
+        <select
           value={form.type}
           onChange={(e) => update('type', e.target.value)}
           required
           className={input}
         >
           <option value="">Tipo do plano</option>
-          <option value="DAILY">Diária</option>
-          <option value="MONTHLY">Mensalista</option>
-          <option value="ANNUAL">Anual</option>
+          {typesForProvider.map((type) => (
+            <option key={type} value={type}>
+              {typeLabels[type]}
+            </option>
+          ))}
         </select>
         <select
-          value={form.level}
-          onChange={(e) => update('level', e.target.value)}
+          value={form.qualityLevel}
+          onChange={(e) => update('qualityLevel', e.target.value)}
           required
           className={input}
         >
@@ -104,6 +146,14 @@ function Plans() {
           <option value="ADVANCED">Avançado</option>
           <option value="PRO">Pro</option>
         </select>
+        <label className="flex items-center gap-2 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            checked={form.enabled}
+            onChange={(e) => update('enabled', e.target.checked)}
+          />
+          Ativo
+        </label>
       </Form>
 
       <List
@@ -113,30 +163,18 @@ function Plans() {
           <li key={plan.id} className="px-4 py-3">
             <div className="flex justify-between items-start">
               <div>
-                <div className="flex gap-3">
+                <div className="flex gap-3 items-center">
                   <span className="font-medium">{plan.name}</span>
-                  <span className="text-slate-500">
-                    R$ {plan.price.toFixed(2)}
-                  </span>
+                  <span className="text-slate-500">R$ {formatCents(plan.priceCents)}</span>
+                  {!plan.enabled && (
+                    <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded">Inativo</span>
+                  )}
                 </div>
                 <div className="text-sm text-slate-400 mt-1 flex gap-4">
                   <span>{typeLabels[plan.type]}</span>
-                  <span>{levelLabels[plan.level]}</span>
+                  <span>{levelLabels[plan.qualityLevel]}</span>
+                  <span>{providerLabels[plan.providerKind] || plan.providerKind}</span>
                 </div>
-              </div>
-              <div className="flex gap-2 shrink-0">
-                <button
-                  onClick={() => startEdit(plan)}
-                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => handleDelete(plan.id)}
-                  className="text-red-600 hover:text-red-800 text-sm font-medium"
-                >
-                  Excluir
-                </button>
               </div>
             </div>
           </li>

@@ -12,6 +12,7 @@ const props = {
   birthDate: new Date('1990-05-20'),
   gender: new Gender('MALE'),
   cpf: '529.982.247-25',
+  planId: 1,
 };
 
 function yearsAgo(years: number): Date {
@@ -44,6 +45,10 @@ describe('Person polymorphism', () => {
     expect(new Teacher(props).role).toBe('TEACHER');
   });
 
+  it('Student may have no plan', () => {
+    expect(() => new Student({ ...props, planId: null })).not.toThrow();
+  });
+
   it('Student requires at least 14 years', () => {
     const tooYoung = yearsAgo(13);
     expect(() => new Student({ ...props, birthDate: tooYoung })).toThrow('Minimum age is 14');
@@ -52,8 +57,8 @@ describe('Person polymorphism', () => {
 
   it('Teacher requires at least 23 years', () => {
     const tooYoung = yearsAgo(20);
-    expect(() => new Teacher({ ...props, birthDate: tooYoung })).toThrow('Minimum age is 23');
-    expect(() => new Teacher({ ...props, birthDate: yearsAgo(23) })).not.toThrow();
+    expect(() => new Teacher({ ...props, planId: null, birthDate: tooYoung })).toThrow('Minimum age is 23');
+    expect(() => new Teacher({ ...props, planId: null, birthDate: yearsAgo(23) })).not.toThrow();
   });
 
   it('serializes gender and role as plain values', () => {
@@ -72,6 +77,7 @@ describe('toDomain mapping', () => {
     gender: GenderEnum.FEMALE,
     cpf: '529.982.247-25',
     role: Role.TEACHER,
+    planId: null,
   };
 
   it('maps a TEACHER row to a Teacher instance', () => {
@@ -81,7 +87,7 @@ describe('toDomain mapping', () => {
   });
 
   it('maps a STUDENT row to a Student instance', () => {
-    const person = toDomain({ ...row, role: Role.STUDENT });
+    const person = toDomain({ ...row, role: Role.STUDENT, planId: 2 });
     expect(person).toBeInstanceOf(Student);
   });
 

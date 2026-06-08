@@ -7,6 +7,7 @@ export type PersonProps = {
   birthDate: Date;
   gender: Gender;
   cpf: string;
+  planId?: number | null;
 };
 
 export abstract class Person {
@@ -16,6 +17,7 @@ export abstract class Person {
   birthDate!: Date;
   gender!: Gender;
   cpf!: string;
+  planId!: number | null;
 
   constructor(props: PersonProps) {
     Object.assign(this, props);

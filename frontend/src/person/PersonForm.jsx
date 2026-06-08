@@ -1,16 +1,17 @@
-// TODO: buscar planos da API quando backend tiver rota /plans
 import Form from '../shared/Form';
-import { PLANS } from '../plans/mockPlans';
+import { formatCents } from '../plans/api';
 
 const empty = { name: '', email: '', birthDate: '', gender: '', cpf: '', planId: '' };
 
 const input =
   'border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
-function PersonForm({ form, setForm, onSubmit, onCancel, editing }) {
+function PersonForm({ form, setForm, onSubmit, onCancel, editing, plans, showPlan }) {
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
+
+  const activePlans = plans.filter((plan) => plan.enabled);
 
   return (
     <Form onSubmit={onSubmit} submitLabel={editing ? 'Salvar' : 'Adicionar'} onCancel={editing ? onCancel : undefined}>
@@ -54,19 +55,20 @@ function PersonForm({ form, setForm, onSubmit, onCancel, editing }) {
         required
         className={input}
       />
-      <select
-        value={form.planId}
-        onChange={(e) => update('planId', e.target.value)}
-        required
-        className={input}
-      >
-        <option value="">Selecione um plano</option>
-        {PLANS.map((plan) => (
-          <option key={plan.id} value={plan.id}>
-            {plan.name} — R$ {plan.price.toFixed(2)}
-          </option>
-        ))}
-      </select>
+      {showPlan && (
+        <select
+          value={form.planId}
+          onChange={(e) => update('planId', e.target.value)}
+          className={input}
+        >
+          <option value="">Sem plano</option>
+          {activePlans.map((plan) => (
+            <option key={plan.id} value={plan.id}>
+              {plan.name} — R$ {formatCents(plan.priceCents)}
+            </option>
+          ))}
+        </select>
+      )}
     </Form>
   );
 }

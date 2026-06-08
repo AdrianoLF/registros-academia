@@ -17,6 +17,7 @@ export type PersonData = {
   gender: GenderEnum;
   cpf: string;
   role: Role;
+  planId: number | null;
 };
 
 type Row = PersonData & { id: number };

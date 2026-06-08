@@ -37,16 +37,18 @@ enum QualityLevel {
 }
 
 model Person {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   name      String
   email     String
   birthDate DateTime
   gender    Gender
-  cpf       String   @unique
-  role      Role     @default(STUDENT)
-  enabled   Boolean  @default(true)
+  cpf       String    @unique
+  role      Role      @default(STUDENT)
+  enabled   Boolean   @default(true)
   planId    Int?
-  plan      Plan?    @relation(fields: [planId], references: [id])
+  plan      Plan?     @relation(fields: [planId], references: [id])
+  payments  Payment[]
+  checkIns  CheckIn[]
 }
 
 model Plan {
@@ -58,4 +60,27 @@ model Plan {
   providerKind ProviderKind @default(CASH)
   enabled      Boolean      @default(true)
   persons      Person[]
+  payments     Payment[]
+  checkIns     CheckIn[]
+}
+
+model Payment {
+  id          Int      @id @default(autoincrement())
+  personId    Int
+  planId      Int
+  priceCents  Int
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime @default(now())
+  person      Person   @relation(fields: [personId], references: [id])
+  plan        Plan     @relation(fields: [planId], references: [id])
+}
+
+model CheckIn {
+  id        Int      @id @default(autoincrement())
+  personId  Int
+  planId    Int
+  createdAt DateTime @default(now())
+  person    Person   @relation(fields: [personId], references: [id])
+  plan      Plan     @relation(fields: [planId], references: [id])
 }

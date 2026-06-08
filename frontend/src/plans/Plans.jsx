@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { getPlans, createPlan, updatePlan, formatCents } from './api';
+import { getPlansPage, createPlan, updatePlan, formatCents } from './api';
 import { getProviders } from '../providers/api';
 import { useError } from '../shared/ErrorContext';
 import PlanForm from './PlanForm';
-import List from '../shared/List';
+import PaginatedList from '../shared/PaginatedList';
 import Modal from '../shared/Modal';
 import Tabs from '../shared/Tabs';
 import LoadingPanel from '../shared/LoadingPanel';
+import { paginateLocal } from '../shared/pageQuery';
+import { usePaginatedList } from '../shared/usePaginatedList';
 import IconButton, { PencilIcon } from '../shared/IconButton';
 import Toggle from '../shared/Toggle';
 import ConfirmModal from '../shared/ConfirmModal';
@@ -63,12 +65,11 @@ function toForm(plan) {
 function Plans() {
   const { tab: listTab } = useParams();
   const navigate = useNavigate();
-  const [plans, setPlans] = useState([]);
   const [providers, setProviders] = useState([]);
   const [form, setForm] = useState(empty);
   const [editForm, setEditForm] = useState(empty);
   const [editing, setEditing] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingProviders, setLoadingProviders] = useState(true);
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [togglingId, setTogglingId] = useState(null);
@@ -85,21 +86,54 @@ function Plans() {
   const editProvider = providers.find((p) => p.kind === editForm.providerKind);
   const editTypesForProvider = acceptedTypes(editProvider);
 
-  async function load() {
-    setLoading(true);
-    try {
-      const [planList, providerList] = await Promise.all([getPlans(), getProviders()]);
-      setPlans(planList);
-      setProviders(providerList);
-    } catch (e) {
-      showError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const loadPlans = useCallback(
+    async (params) => {
+      try {
+        return await getPlansPage({ enabled: showActive, ...params });
+      } catch (e) {
+        showError(e.message);
+        return { items: [], total: 0, totalPages: 0, page: params.page, limit: params.limit };
+      }
+    },
+    [showActive, showError]
+  );
+
+  const {
+    items: plans,
+    total: plansTotal,
+    page: plansPage,
+    totalPages: plansTotalPages,
+    searchInput: plansSearch,
+    setSearchInput: setPlansSearch,
+    setPage: setPlansPage,
+    loading: loadingPlans,
+    reload: reloadPlans,
+  } = usePaginatedList(loadPlans, [listTab]);
+
+  const loadProvidersPage = useCallback(
+    async ({ page, search, limit }) =>
+      paginateLocal(
+        providers,
+        { page, limit, search },
+        (provider, term) => (providerLabels[provider.kind] || provider.kind).toLowerCase().includes(term)
+      ),
+    [providers]
+  );
+
+  const providersList = usePaginatedList(loadProvidersPage, [providers]);
 
   useEffect(() => {
-    load();
+    async function loadProviders() {
+      setLoadingProviders(true);
+      try {
+        setProviders(await getProviders());
+      } catch (e) {
+        showError(e.message);
+      } finally {
+        setLoadingProviders(false);
+      }
+    }
+    loadProviders();
   }, []);
 
   function updateForm(setter, field, value) {
@@ -115,8 +149,6 @@ function Plans() {
       return next;
     });
   }
-
-  const filtered = plans.filter((p) => (showActive ? p.enabled : !p.enabled));
 
   function openEdit(plan) {
     setEditing(plan);
@@ -134,7 +166,7 @@ function Plans() {
     try {
       await createPlan(toPlanPayload(form, true));
       setForm(empty);
-      await load();
+      await reloadPlans();
     } catch (err) {
       showError(err.message);
     } finally {
@@ -148,7 +180,7 @@ function Plans() {
     try {
       await updatePlan(editing.id, toPlanPayload(editForm, editing.enabled));
       closeEdit();
-      await load();
+      await reloadPlans();
     } catch (err) {
       showError(err.message);
     } finally {
@@ -166,7 +198,7 @@ function Plans() {
     try {
       await updatePlan(plan.id, toPlanPayload(toForm(plan), nextEnabled));
       setConfirmToggle(null);
-      await load();
+      await reloadPlans();
     } catch (err) {
       showError(err.message);
     } finally {
@@ -181,12 +213,20 @@ function Plans() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,1fr)_minmax(0,2fr)] gap-6 items-start">
         <section>
           <h2 className="text-lg font-semibold mb-4">Provedores</h2>
-          {loading ? (
+          {loadingProviders ? (
             <LoadingPanel label="Carregando provedores..." />
           ) : (
-            <List
-              items={providers}
+            <PaginatedList
+              items={providersList.items}
+              total={providersList.total}
+              page={providersList.page}
+              totalPages={providersList.totalPages}
+              search={providersList.searchInput}
+              onSearchChange={providersList.setSearchInput}
+              onPageChange={providersList.setPage}
+              loading={providersList.loading}
               empty="Nenhum provedor disponível."
+              searchPlaceholder="Buscar provedor..."
               renderItem={(provider) => (
                 <li key={provider.kind} className="px-4 py-3">
                   <div className="font-medium">{providerLabels[provider.kind] || provider.kind}</div>
@@ -221,13 +261,18 @@ function Plans() {
             <h2 className="text-lg font-semibold mb-4">Planos cadastrados</h2>
             <Tabs tabs={tabs} active={listTab} onChange={(key) => navigate(`/planos/${key}`)} />
 
-            {loading ? (
-              <LoadingPanel />
-            ) : (
-              <List
-                items={filtered}
-                empty={showActive ? 'Nenhum plano ativo.' : 'Nenhum plano inativo.'}
-                renderItem={(plan) => (
+            <PaginatedList
+              items={plans}
+              total={plansTotal}
+              page={plansPage}
+              totalPages={plansTotalPages}
+              search={plansSearch}
+              onSearchChange={setPlansSearch}
+              onPageChange={setPlansPage}
+              loading={loadingPlans}
+              empty={showActive ? 'Nenhum plano ativo.' : 'Nenhum plano inativo.'}
+              searchPlaceholder="Buscar plano..."
+              renderItem={(plan) => (
                   <li key={plan.id} className="px-4 py-3">
                     <div className="flex justify-between items-start gap-3">
                       <div>
@@ -254,8 +299,7 @@ function Plans() {
                     </div>
                   </li>
                 )}
-              />
-            )}
+            />
           </div>
         </section>
       </div>

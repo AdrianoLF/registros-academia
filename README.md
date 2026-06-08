@@ -30,3 +30,63 @@ O projeto tem como objetivo simular o funcionamento de uma academia, permitindo 
 ## Objetivo Acadêmico
 
 Este projeto foi desenvolvido com fins acadêmicos para praticar conceitos de Programação Orientada a Objetos e organização de sistemas utilizando TypeScript.
+
+## Como rodar
+
+### Pré-requisito
+
+Copie o arquivo de ambiente e ajuste se necessário:
+
+```bash
+cp .env.example .env
+```
+
+### Subir os containers
+
+Sobe banco, backend e frontend:
+
+```bash
+docker compose up -d --build
+```
+
+- Frontend: http://localhost:5173
+- Backend: http://localhost:3001
+
+Ao iniciar, o backend roda `prisma generate`, aplica as migrations pendentes e sobe a API.
+
+### Migrations
+
+Aplicar migrations pendentes no banco do Docker:
+
+```bash
+docker compose exec backend npx prisma migrate deploy
+```
+
+Regenerar o Prisma Client (necessário após alterar `schema.prisma`):
+
+```bash
+docker compose exec backend npx prisma generate
+```
+
+Criar uma migration nova (rodar na pasta `backend`, com o banco acessível):
+
+```bash
+cd backend
+npx prisma migrate dev --name nome_da_migration
+```
+
+### Seed (dados de demo)
+
+```bash
+docker compose exec backend npm run seed
+```
+
+### Outros comandos úteis
+
+Testes e typecheck (na pasta `backend`):
+
+```bash
+cd backend
+npm test
+npm run typecheck
+```

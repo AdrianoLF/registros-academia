@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "ts-node src/server.ts",
     "dev:watch": "node --watch-path=./src --watch -r ts-node/register src/server.ts",
-    "start:docker": "prisma migrate deploy && npm run dev:watch",
+    "start:docker": "prisma generate && prisma migrate deploy && npm run dev:watch",
+    "seed": "ts-node src/seed/seed.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

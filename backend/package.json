@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "ts-node src/server.ts",
+    "start:docker": "prisma migrate deploy && npm run dev",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

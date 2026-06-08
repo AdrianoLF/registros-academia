@@ -89,97 +89,125 @@ function Plans() {
   }
 
   return (
-    <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold mb-6">Planos</h1>
+    <div>
+      <h1 className="text-2xl font-bold mb-6">Planos e provedores</h1>
 
-      <Form onSubmit={handleSubmit} submitLabel="Adicionar">
-        <input
-          placeholder="Nome do plano"
-          value={form.name}
-          onChange={(e) => update('name', e.target.value)}
-          required
-          className={input}
-        />
-        <input
-          type="number"
-          placeholder="Preço (R$)"
-          value={form.price}
-          onChange={(e) => update('price', e.target.value)}
-          required
-          min="0"
-          step="0.01"
-          className={input}
-        />
-        <select
-          value={form.providerKind}
-          onChange={(e) => update('providerKind', e.target.value)}
-          required
-          className={input}
-        >
-          {providers.map((provider) => (
-            <option key={provider.kind} value={provider.kind}>
-              {providerLabels[provider.kind] || provider.kind}
-            </option>
-          ))}
-        </select>
-        <select
-          value={form.type}
-          onChange={(e) => update('type', e.target.value)}
-          required
-          className={input}
-        >
-          <option value="">Tipo do plano</option>
-          {typesForProvider.map((type) => (
-            <option key={type} value={type}>
-              {typeLabels[type]}
-            </option>
-          ))}
-        </select>
-        <select
-          value={form.qualityLevel}
-          onChange={(e) => update('qualityLevel', e.target.value)}
-          required
-          className={input}
-        >
-          <option value="">Nível do plano</option>
-          <option value="BASIC">Básico</option>
-          <option value="ADVANCED">Avançado</option>
-          <option value="PRO">Pro</option>
-        </select>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input
-            type="checkbox"
-            checked={form.enabled}
-            onChange={(e) => update('enabled', e.target.checked)}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,1fr)_minmax(0,2fr)] gap-6 items-start">
+        <section>
+          <h2 className="text-lg font-semibold mb-4">Provedores</h2>
+          <List
+            items={providers}
+            empty="Nenhum provedor disponível."
+            renderItem={(provider) => (
+              <li key={provider.kind} className="px-4 py-3">
+                <div className="font-medium">{providerLabels[provider.kind] || provider.kind}</div>
+                <div className="text-sm text-slate-400 mt-1 flex flex-wrap gap-3">
+                  {provider.acceptsDaily && <span>Diária</span>}
+                  {provider.acceptsMonthly && <span>Mensalista</span>}
+                  {provider.acceptsAnnual && <span>Anual</span>}
+                </div>
+              </li>
+            )}
           />
-          Ativo
-        </label>
-      </Form>
+        </section>
 
-      <List
-        items={plans}
-        empty="Nenhum plano cadastrado."
-        renderItem={(plan) => (
-          <li key={plan.id} className="px-4 py-3">
-            <div className="flex justify-between items-start">
-              <div>
-                <div className="flex gap-3 items-center">
-                  <span className="font-medium">{plan.name}</span>
-                  <span className="text-slate-500">R$ {formatCents(plan.priceCents)}</span>
-                  {!plan.enabled && (
-                    <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded">Inativo</span>
-                  )}
-                </div>
-                <div className="text-sm text-slate-400 mt-1 flex gap-4">
-                  <span>{typeLabels[plan.type]}</span>
-                  <span>{levelLabels[plan.qualityLevel]}</span>
-                  <span>{providerLabels[plan.providerKind] || plan.providerKind}</span>
-                </div>
-              </div>
-            </div>
-          </li>
-        )}
-      />
+        <section className="space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Novo plano</h2>
+            <Form onSubmit={handleSubmit} submitLabel="Adicionar" className="mb-0">
+              <input
+                placeholder="Nome do plano"
+                value={form.name}
+                onChange={(e) => update('name', e.target.value)}
+                required
+                className={input}
+              />
+              <input
+                type="number"
+                placeholder="Preço (R$)"
+                value={form.price}
+                onChange={(e) => update('price', e.target.value)}
+                required
+                min="0"
+                step="0.01"
+                className={input}
+              />
+              <select
+                value={form.providerKind}
+                onChange={(e) => update('providerKind', e.target.value)}
+                required
+                className={input}
+              >
+                {providers.map((provider) => (
+                  <option key={provider.kind} value={provider.kind}>
+                    {providerLabels[provider.kind] || provider.kind}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={form.type}
+                onChange={(e) => update('type', e.target.value)}
+                required
+                className={input}
+              >
+                <option value="">Tipo do plano</option>
+                {typesForProvider.map((type) => (
+                  <option key={type} value={type}>
+                    {typeLabels[type]}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={form.qualityLevel}
+                onChange={(e) => update('qualityLevel', e.target.value)}
+                required
+                className={input}
+              >
+                <option value="">Nível do plano</option>
+                <option value="BASIC">Básico</option>
+                <option value="ADVANCED">Avançado</option>
+                <option value="PRO">Pro</option>
+              </select>
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={form.enabled}
+                  onChange={(e) => update('enabled', e.target.checked)}
+                />
+                Ativo
+              </label>
+            </Form>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Planos cadastrados</h2>
+            <List
+              items={plans}
+              empty="Nenhum plano cadastrado."
+              renderItem={(plan) => (
+                <li key={plan.id} className="px-4 py-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex flex-wrap gap-3 items-center">
+                        <span className="font-medium">{plan.name}</span>
+                        <span className="text-slate-500">R$ {formatCents(plan.priceCents)}</span>
+                        {!plan.enabled && (
+                          <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded">Inativo</span>
+                        )}
+                      </div>
+                      <div className="text-sm text-slate-400 mt-1 flex flex-wrap gap-4">
+                        <span>{typeLabels[plan.type]}</span>
+                        <span>{levelLabels[plan.qualityLevel]}</span>
+                        <span>{providerLabels[plan.providerKind] || plan.providerKind}</span>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              )}
+            />
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

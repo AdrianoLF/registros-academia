@@ -1,6 +1,9 @@
-function Form({ onSubmit, submitLabel = 'Salvar', onCancel, children }) {
+function Form({ onSubmit, submitLabel = 'Salvar', onCancel, className = '', children }) {
   return (
-    <form onSubmit={onSubmit} className="grid grid-cols-2 gap-3 bg-white p-5 rounded-xl shadow-sm mb-6">
+    <form
+      onSubmit={onSubmit}
+      className={`grid grid-cols-2 gap-3 bg-white p-5 rounded-xl shadow-sm mb-6 ${className}`.trim()}
+    >
       {children}
       <button
         type="submit"

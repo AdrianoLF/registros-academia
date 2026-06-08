@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { getPersonsPage } from '../person/api';
 import { createCheckIn, checkInReasonLabel } from '../person/checkinApi';
+import WeeklyCheckInsChart from '../reports/WeeklyCheckInsChart';
 import { useError } from '../shared/ErrorContext';
 import PaginatedList from '../shared/PaginatedList';
 import { usePaginatedList } from '../shared/usePaginatedList';
@@ -10,6 +11,7 @@ function Home() {
   const [selected, setSelected] = useState(null);
   const [checkingIn, setCheckingIn] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [reportRefresh, setReportRefresh] = useState(0);
 
   const loadStudents = useCallback(
     async (params) => {
@@ -48,6 +50,7 @@ function Home() {
     try {
       await createCheckIn(selected.id);
       setFeedback({ ok: true, message: `Check-in de ${selected.name} realizado!` });
+      setReportRefresh((value) => value + 1);
     } catch (err) {
       setFeedback({ ok: false, message: checkInReasonLabel(err.message) });
     } finally {
@@ -59,7 +62,8 @@ function Home() {
     <div>
       <h1 className="text-2xl font-bold mb-6">Home</h1>
 
-      <section className="max-w-xl rounded-xl border border-slate-100 bg-white p-6 shadow-sm space-y-4">
+      <div className="grid gap-6 lg:grid-cols-2">
+      <section className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm space-y-4">
         <h2 className="text-lg font-semibold text-slate-800">Check-in</h2>
 
         <PaginatedList
@@ -119,6 +123,12 @@ function Home() {
           )}
         </form>
       </section>
+
+      <section className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm space-y-4">
+        <h2 className="text-lg font-semibold text-slate-800">Check-ins na última semana</h2>
+        <WeeklyCheckInsChart refreshKey={reportRefresh} />
+      </section>
+      </div>
     </div>
   );
 }

@@ -47,6 +47,14 @@ export class CheckInRepository {
     return buildPageResult(rows.map(toDomain), total, query.page, query.limit);
   }
 
+  async listCreatedAtBetween(from: Date, to: Date): Promise<Date[]> {
+    const rows = await prisma.checkIn.findMany({
+      where: { createdAt: { gte: from, lt: to } },
+      select: { createdAt: true },
+    });
+    return rows.map((row) => row.createdAt);
+  }
+
   async countByPerson(personId: number): Promise<number> {
     return prisma.checkIn.count({ where: { personId } });
   }
